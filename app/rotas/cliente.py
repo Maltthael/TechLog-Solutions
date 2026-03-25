@@ -1,19 +1,25 @@
 from typing import Annotated
-
+from fastapi.requests import Request
+from fastapi.responses import HTMLResponse
 from fastapi import APIRouter, Depends, HTTPException
-
 from app.modelos.cliente import Cliente, ClienteCriarAtualizar
 from app.banco_de_dados.cliente_repositorio import ClienteRepositorio
 from app.dependencias import obter_cliente_repositorio
+from fastapi.templating import Jinja2Templates
+
 
 router = APIRouter(
+    prefix="/api/clientes",
+)
+
+front_router = APIRouter(
     prefix="/clientes",
 )
 
+templates = Jinja2Templates(directory="templates/templates")
+
+
  #id_ é usado para evitar conflitos que o id normal provavelmente causaria, levando em consideração que ao consultar um id com () ele pode mostrar o mesmo local de armazenamento na memoria de mais de uma variavel
-CLIENTE_LIST = [Cliente(id_= 1, nome = 'Roberto', email = 'Roberto@gmail.com', telefone = '1993483499'),
-                Cliente(id_ = 2, nome = 'Jonas', email = 'Jonas@Outlook.com', telefone = '1193482399')
-                     ]
 
 @router.get("/", response_model=list[Cliente])
 async def listar_clientes(cliente_repositorio: Annotated[ClienteRepositorio, Depends(obter_cliente_repositorio)]):
@@ -56,4 +62,40 @@ async def deletar_cliente(
     sucesso = await cliente_repositorio.deletar_cliente(cliente_id)
     if not sucesso:
         raise HTTPException(status_code= 404, detail="Cliente não encontrado !")
+    
+
+@front_router.get("/", response_class=HTMLResponse)
+async def pagina_listar_clientes(
+    request: Request, 
+    cliente_repositorio: Annotated[ClienteRepositorio, Depends(obter_cliente_repositorio)]
+):
+    # Busca os dados reais do banco
+    lista_do_banco = await cliente_repositorio.listar_clientes()
+    
+    return templates.TemplateResponse(
+        request=request,
+        name="clientes.html",
+        context={
+            "titulo": "Lista de Clientes",
+            "clientes": lista_do_banco  
+        }
+    )
+    
+@front_router.get("/novo", response_class=HTMLResponse)
+async def pagina_criar_cliente(request: Request): 
+    return templates.TemplateResponse(
+        request=request, 
+        name="clientes-form.html", 
+        context={"titulo": "Novo Cliente", "cliente": None})
+    
+    
+@front_router.get('/{cliente_id}', response_class=HTMLResponse)
+async def pagina_editar_cliente(request: Request, cliente_id: int, cliente_repositorio: Annotated[ClienteRepositorio, Depends(obter_cliente_repositorio)]):
+    cliente = await cliente_repositorio.obter_cliente(cliente_id)
+    return templates.TemplateResponse(
+        request = request,
+        name= "clientes-form.html", 
+        context = {"request": request, "cliente": cliente}
+        )
+
 
