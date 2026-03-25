@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse 
+from app.rotas import cliente
 
 app = FastAPI(
     title= "Techlog Solutions API",
@@ -7,11 +8,12 @@ app = FastAPI(
     version = "1.0.0",
 )
 
+app.include_router(cliente.router)
+
 @app.get("/")
 async def health_check():
     return {"status": "OK"}
 
-@app.get("/front", response_class=HTMLResponse)
 @app.get("/front", response_class=HTMLResponse)
 async def front_page():
     html_content = """
